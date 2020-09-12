@@ -51,7 +51,7 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
         bootinfo.physical_memory_offset
     );
 
-    gdt::load();
+    gdt::init();
     interrupts::init();
     pic::init();
 

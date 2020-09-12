@@ -44,7 +44,7 @@ pub struct Selectors {
     tss_selector: SegmentSelector,
 }
 
-pub fn load() {
+pub fn init() {
     GDT.0.load();
 
     unsafe {
