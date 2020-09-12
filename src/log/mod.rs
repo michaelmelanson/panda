@@ -6,19 +6,19 @@ use spin::Mutex;
 use crate::vga::Vga;
 
 pub(crate) enum LogTarget {
-  Vga(Vga)
+    Vga(Vga),
 }
 
 impl Write for LogTarget {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         match self {
-          LogTarget::Vga(vga) => vga.writer.write_str(s)
+            LogTarget::Vga(vga) => vga.writer.write_str(s),
         }
     }
 }
 
 lazy_static! {
-  pub(crate) static ref TARGET: Mutex<LogTarget> = Mutex::new(LogTarget::Vga(Vga::new()));
+    pub(crate) static ref TARGET: Mutex<LogTarget> = Mutex::new(LogTarget::Vga(Vga::new()));
 }
 
 #[macro_export]

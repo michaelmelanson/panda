@@ -1,8 +1,8 @@
 mod buffer;
 mod colour;
 mod colour_code;
-mod writer;
 mod write_impl;
+mod writer;
 
 use buffer::Buffer;
 use colour::Colour;
