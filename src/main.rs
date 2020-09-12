@@ -5,9 +5,8 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(panda::test_runner)]
 
-extern crate rlibc;
-
 extern crate panda;
+extern crate rlibc;
 
 use panda::*;
 
@@ -30,7 +29,9 @@ pub extern "C" fn _start() -> ! {
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
-    log::set_log_target(log::LogTarget::Vga(vga::Vga::new(bootinfo.physical_memory_offset)));
+    log::set_log_target(log::LogTarget::Vga(vga::Vga::new(
+        bootinfo.physical_memory_offset,
+    )));
 
     println!("Panda");
     println!();
