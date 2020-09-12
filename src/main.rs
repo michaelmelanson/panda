@@ -10,7 +10,6 @@ extern crate rlibc;
 extern crate panda;
 
 use panda::*;
-use panda::{log::LogTarget, vga::Vga};
 
 use core::panic::PanicInfo;
 
@@ -31,7 +30,7 @@ pub extern "C" fn _start() -> ! {
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
-    log::set_log_target(LogTarget::Vga(Vga::new(bootinfo.physical_memory_offset)));
+    log::set_log_target(log::LogTarget::Vga(vga::Vga::new(bootinfo.physical_memory_offset)));
 
     println!("Panda");
     println!();

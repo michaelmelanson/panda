@@ -18,7 +18,7 @@ fn stack_overflow() {
 pub extern "C" fn _start() -> ! {
     serial_print!("testing that kernel stack overflow triggers double fault... ");
 
-    panda::gdt::load();
+    panda::gdt::init();
     panda::interrupts::init();
     stack_overflow();
 
