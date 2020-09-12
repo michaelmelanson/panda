@@ -17,6 +17,9 @@ x86_64 = "0.11.7"
 
 [package.metadata.bootimage]
 run-command = ["qemu-system-x86_64", "-drive", "format=raw,file={}"]
+run-args = [
+  "-serial", "stdio"
+]
 test-args = [
   "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", 
   "-serial", "stdio",
