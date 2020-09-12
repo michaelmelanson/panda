@@ -18,6 +18,7 @@ pub mod test_runner;
 pub mod gdt;
 pub mod interrupts;
 pub mod panic;
+pub mod pic;
 pub mod qemu;
 pub mod vga;
 

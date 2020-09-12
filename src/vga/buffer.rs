@@ -4,7 +4,7 @@ use super::colour_code::ColourCode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct ScreenChar {
+pub struct ScreenChar {
     ascii_character: u8,
     colour_code: ColourCode,
 }
@@ -18,7 +18,7 @@ impl ScreenChar {
     }
 }
 #[repr(transparent)]
-pub(crate) struct Buffer {
+pub struct Buffer {
     pub chars: [[Volatile<ScreenChar>; Buffer::width()]; Buffer::height()],
 }
 

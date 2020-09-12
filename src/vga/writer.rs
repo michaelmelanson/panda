@@ -3,7 +3,7 @@ use super::{
     colour_code::ColourCode,
 };
 
-pub(crate) struct Writer {
+pub struct Writer {
     column_position: usize,
     colour_code: ColourCode,
     buffer: &'static mut Buffer,

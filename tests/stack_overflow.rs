@@ -33,7 +33,10 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         serial_println!("[ok]");
         qemu::exit_success();
     } else {
-        serial_println!("[failed] (panic but {} double fault exceptions", double_fault_count);
+        serial_println!(
+            "[failed] (panic but {} double fault exceptions",
+            double_fault_count
+        );
         serial_println!("{}", info);
         qemu::exit_failure();
     }

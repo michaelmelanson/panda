@@ -9,15 +9,15 @@ use colour::Colour;
 use colour_code::ColourCode;
 use writer::Writer;
 
-pub(crate) struct Vga {
+pub struct Vga {
     pub writer: Writer,
 }
 
 impl Vga {
-    pub fn new() -> Self {
+    pub fn new(physical_base: u64) -> Self {
         Vga {
             writer: Writer::new(0, ColourCode::new(Colour::White, Colour::Black), unsafe {
-                &mut *(0xb8000 as *mut Buffer)
+                &mut *((physical_base + 0xb8000) as *mut Buffer)
             }),
         }
     }

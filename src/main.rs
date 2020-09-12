@@ -10,20 +10,29 @@ extern crate rlibc;
 extern crate panda;
 
 use panda::*;
+use panda::{log::LogTarget, vga::Vga};
 
 use core::panic::PanicInfo;
+
+pub fn halt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt()
+    }
+}
 
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     test_main();
     qemu::exit_success();
-    loop {}
+    halt_loop()
 }
 
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
+    log::set_log_target(LogTarget::Vga(Vga::new(bootinfo.physical_memory_offset)));
+
     println!("Panda");
     println!();
 
@@ -44,13 +53,11 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
 
     gdt::load();
     interrupts::init();
+    pic::init();
 
-    unsafe {
-        *(0xdeadbeef as *mut u64) = 42;
-    };
+    println!("All done initializing");
 
-    println!("It didn't crash!");
-    loop {}
+    halt_loop()
 }
 
 #[test_case]
@@ -70,5 +77,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     qemu::exit_failure();
-    loop {}
+    halt_loop()
 }

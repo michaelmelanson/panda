@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub(crate) enum Colour {
+pub enum Colour {
     Black = 0,
     Blue = 1,
     Green = 2,
