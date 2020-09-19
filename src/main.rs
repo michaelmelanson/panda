@@ -5,9 +5,11 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(panda::test_runner)]
 
+extern crate alloc;
 extern crate panda;
 extern crate rlibc;
 
+use alloc::boxed::Box;
 use panda::*;
 
 use core::panic::PanicInfo;
@@ -36,25 +38,15 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
     println!("Panda");
     println!();
 
-    println!("Memory map:");
-    for region in bootinfo.memory_map.into_iter() {
-        println!(
-            " - {:#016X}-{:#016X} {:?}",
-            region.range.start_addr(),
-            region.range.end_addr(),
-            region.region_type
-        );
-    }
-
-    println!(
-        "Physical memory is at {:#016X}",
-        bootinfo.physical_memory_offset
-    );
-
+    memory::init(&bootinfo);
     gdt::init();
     interrupts::init();
     pic::init();
+    // acpi::init(bootinfo.physical_memory_offset);
 
+    println!("Allocating something");
+    let boxed_number = Box::new(42);
+    println!("Boxed number: {:?}", boxed_number);
     println!("All done initializing");
 
     halt_loop()
