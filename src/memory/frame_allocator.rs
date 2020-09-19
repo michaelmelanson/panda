@@ -33,7 +33,6 @@ impl PhysicalFrameAllocator {
 unsafe impl FrameAllocator<Size4KiB> for PhysicalFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
         let frame = self.frames().nth(self.next);
-        println!("Allocating frame {:?}", frame);
         self.next += 1;
         frame
     }

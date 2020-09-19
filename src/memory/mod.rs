@@ -73,8 +73,6 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 }
 
 pub unsafe fn map_page(page: Page, flags: PageTableFlags) {
-    println!("Mapping page {:?} with flags {:?}", page, flags);
-
     let mut mapper = MAPPER.wait().unwrap().lock();
     let mut frame_allocator = FRAME_ALLOCATOR.wait().unwrap().lock();
 
@@ -85,8 +83,6 @@ pub unsafe fn map_page(page: Page, flags: PageTableFlags) {
     let mapping = mapper
         .map_to(page, frame, flags, &mut *frame_allocator)
         .expect("Failed to map page");
-
-    println!(" -> {:?}", mapping);
 
     mapping.flush()
 }

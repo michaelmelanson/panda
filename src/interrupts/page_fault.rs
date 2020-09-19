@@ -30,11 +30,6 @@ pub extern "x86-interrupt" fn page_fault_handler(
                     | PageTableFlags::WRITABLE,
             );
         }
-
-        println!(
-            "Page fault: Allocated kernel heap page for address {:?}",
-            address
-        );
         return;
     }
 
