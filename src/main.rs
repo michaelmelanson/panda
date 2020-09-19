@@ -38,10 +38,10 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
     println!("Panda");
     println!();
 
-    memory::init(&bootinfo);
     gdt::init();
     interrupts::init();
     pic::init();
+    memory::init(&bootinfo);
     // acpi::init(bootinfo.physical_memory_offset);
 
     println!("Allocating something");

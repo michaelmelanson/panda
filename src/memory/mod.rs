@@ -1,43 +1,61 @@
 use bootloader::BootInfo;
 use frame_allocator::PhysicalFrameAllocator;
 use linked_list_allocator::LockedHeap;
+use spin::{Mutex, Once};
 use x86_64::{
-    structures::paging::mapper::MapToError, structures::paging::FrameAllocator,
-    structures::paging::Mapper, structures::paging::OffsetPageTable, structures::paging::Page,
-    structures::paging::PageTable, structures::paging::PageTableFlags,
-    structures::paging::Size4KiB, VirtAddr,
+    structures::paging::FrameAllocator, structures::paging::Mapper,
+    structures::paging::OffsetPageTable, structures::paging::Page, structures::paging::PageTable,
+    structures::paging::PageTableFlags, VirtAddr,
 };
 
-pub mod allocator;
 pub mod frame_allocator;
 
-static HEAP_START: usize = 0x_4444_4444_0000;
-static HEAP_SIZE: usize = 100 * 1024;
-// static FRAME_ALLOCATOR: Mutex<PhysicalFrameAllocator> = Mutex::new(PhysicalFrameAllocator::new());
+pub static HEAP_START: u64 = 0x_4444_4444_0000;
+pub static HEAP_SIZE: u64 = 100 * 1024;
+
+static mut FRAME_ALLOCATOR: Once<Mutex<PhysicalFrameAllocator>> = Once::new();
+static mut MAPPER: Once<Mutex<OffsetPageTable>> = Once::new();
 
 #[global_allocator]
 static mut GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub fn init(boot_info: &'static BootInfo) {
-    let mut frame_allocator = PhysicalFrameAllocator::new(&boot_info.memory_map);
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
+}
 
-    println!("Memory map:");
-    for region in boot_info.memory_map.into_iter() {
-        println!(
-            " - {:#016X}-{:#016X} ({:?} KiB) {:?}",
-            region.range.start_addr(),
-            region.range.end_addr(),
-            (region.range.end_frame_number - region.range.start_frame_number) * 4,
-            region.region_type
-        );
+pub fn init(boot_info: &'static BootInfo) {
+    unsafe {
+        FRAME_ALLOCATOR
+            .call_once(|| Mutex::new(PhysicalFrameAllocator::new(&boot_info.memory_map)));
     }
 
-    let physical_memory_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let l4_table = unsafe { active_level_4_table(physical_memory_offset) };
+    // println!("Memory map:");
+    // for region in boot_info.memory_map.into_iter() {
+    //     println!(
+    //         " - {:#016X}-{:#016X} ({:?} KiB) {:?}",
+    //         region.range.start_addr(),
+    //         region.range.end_addr(),
+    //         (region.range.end_frame_number - region.range.start_frame_number) * 4,
+    //         region.region_type
+    //     );
+    // }
 
-    let mut mapper = unsafe { OffsetPageTable::new(l4_table, physical_memory_offset) };
+    unsafe {
+        MAPPER.call_once(|| {
+            let physical_memory_offset = VirtAddr::new(boot_info.physical_memory_offset);
+            let l4_table = active_level_4_table(physical_memory_offset);
 
-    init_heap(&mut mapper, &mut frame_allocator).expect("Failed to init heap");
+            Mutex::new(OffsetPageTable::new(l4_table, physical_memory_offset))
+        });
+    }
+
+    println!("Intializing kernel heap...");
+    unsafe {
+        GLOBAL_ALLOCATOR
+            .lock()
+            .init(HEAP_START as usize, HEAP_SIZE as usize);
+    }
 
     println!("Done!");
 }
@@ -54,30 +72,21 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     &mut *page_table_ptr
 }
 
-fn init_heap(
-    mapper: &mut impl Mapper<Size4KiB>,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) -> Result<(), MapToError<Size4KiB>> {
-    let page_range = {
-        let heap_start = VirtAddr::new(HEAP_START as u64);
-        let heap_end = heap_start + HEAP_SIZE - 1u64;
-        let heap_start_page = Page::containing_address(heap_start);
-        let heap_end_page = Page::containing_address(heap_end);
-        Page::range_inclusive(heap_start_page, heap_end_page)
-    };
+pub unsafe fn map_page(page: Page, flags: PageTableFlags) {
+    println!("Mapping page {:?} with flags {:?}", page, flags);
 
-    for page in page_range {
-        let frame = frame_allocator
-            .allocate_frame()
-            .ok_or(MapToError::FrameAllocationFailed)?;
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
-    }
+    let mut mapper = MAPPER.wait().unwrap().lock();
+    let mut frame_allocator = FRAME_ALLOCATOR.wait().unwrap().lock();
 
-    println!("Intializing kernel heap...");
-    unsafe {
-        GLOBAL_ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
-    }
+    let frame = frame_allocator
+        .allocate_frame()
+        .expect("Failed to allocate frame");
 
-    Ok(())
+    let mapping = mapper
+        .map_to(page, frame, flags, &mut *frame_allocator)
+        .expect("Failed to map page");
+
+    println!(" -> {:?}", mapping);
+
+    mapping.flush()
 }
