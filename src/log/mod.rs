@@ -36,6 +36,12 @@ macro_rules! println {
 }
 
 #[macro_export]
+macro_rules! debug {
+    () => (print!("DEBUG: \n"));
+    ($($arg:tt)*) => (print!("DEBUG: {}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::log::_print(format_args!($($arg)*)));
 }

@@ -7,8 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# acpi = "1.0.0"
+acpi = { path = "../acpi/acpi" }
+aml = { path = "../acpi/aml" }
 bootloader = { version = "0.9.8", features=['map_physical_memory'] }
+byteorder = { version = "1.3.4", default-features=false }
 lazy_static = { version = "1.0", features=['spin_no_std'] }
 rlibc = "1.0.0"
 spin = "0.5.2"
@@ -19,10 +21,12 @@ pic8259_simple = "0.2.0"
 linked_list_allocator = { version = "0.8.5", features=['use_spin'] }
 
 [package.metadata.bootimage]
-run-command = ["qemu-system-x86_64", "-drive", "format=raw,file={}"]
-run-args = [
-  "-serial", "stdio"
+run-command = [
+  "qemu-system-x86_64",  
+  "-nodefaults", "-readconfig", "qemu.cfg", 
+  "-drive", "id=disk,format=raw,file={},if=none"
 ]
+run-args = []
 test-args = [
   "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", 
   "-serial", "stdio",

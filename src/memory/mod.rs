@@ -5,16 +5,17 @@ use spin::{Mutex, Once};
 use x86_64::{
     structures::paging::FrameAllocator, structures::paging::Mapper,
     structures::paging::OffsetPageTable, structures::paging::Page, structures::paging::PageTable,
-    structures::paging::PageTableFlags, VirtAddr,
+    structures::paging::PageTableFlags, PhysAddr, VirtAddr,
 };
 
 pub mod frame_allocator;
 
 pub static HEAP_START: u64 = 0x_4444_4444_0000;
-pub static HEAP_SIZE: u64 = 100 * 1024;
+pub static HEAP_SIZE: u64 = 200 * 1024;
 
 static mut FRAME_ALLOCATOR: Once<Mutex<PhysicalFrameAllocator>> = Once::new();
 static mut MAPPER: Once<Mutex<OffsetPageTable>> = Once::new();
+static mut PHYSICAL_MEMORY_OFFSET: u64 = 0;
 
 #[global_allocator]
 static mut GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -30,17 +31,6 @@ pub fn init(boot_info: &'static BootInfo) {
             .call_once(|| Mutex::new(PhysicalFrameAllocator::new(&boot_info.memory_map)));
     }
 
-    // println!("Memory map:");
-    // for region in boot_info.memory_map.into_iter() {
-    //     println!(
-    //         " - {:#016X}-{:#016X} ({:?} KiB) {:?}",
-    //         region.range.start_addr(),
-    //         region.range.end_addr(),
-    //         (region.range.end_frame_number - region.range.start_frame_number) * 4,
-    //         region.region_type
-    //     );
-    // }
-
     unsafe {
         MAPPER.call_once(|| {
             let physical_memory_offset = VirtAddr::new(boot_info.physical_memory_offset);
@@ -55,6 +45,10 @@ pub fn init(boot_info: &'static BootInfo) {
         GLOBAL_ALLOCATOR
             .lock()
             .init(HEAP_START as usize, HEAP_SIZE as usize);
+    }
+
+    unsafe {
+        PHYSICAL_MEMORY_OFFSET = boot_info.physical_memory_offset;
     }
 
     println!("Done!");
@@ -85,4 +79,8 @@ pub unsafe fn map_page(page: Page, flags: PageTableFlags) {
         .expect("Failed to map page");
 
     mapping.flush()
+}
+
+pub fn physical_to_virtual_address(physical: PhysAddr) -> VirtAddr {
+    VirtAddr::new(physical.as_u64() + unsafe { PHYSICAL_MEMORY_OFFSET })
 }

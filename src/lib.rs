@@ -18,12 +18,13 @@ pub mod serial;
 #[cfg(test)]
 pub mod test_runner;
 
-// pub mod acpi;
+pub mod acpi;
+pub mod device;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
 pub mod panic;
-//pub mod pci;
+pub mod pci;
 pub mod pic;
 pub mod qemu;
 pub mod vga;

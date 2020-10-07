@@ -9,7 +9,6 @@ extern crate alloc;
 extern crate panda;
 extern crate rlibc;
 
-use alloc::boxed::Box;
 use panda::*;
 
 use core::panic::PanicInfo;
@@ -42,13 +41,19 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
     interrupts::init();
     pic::init();
     memory::init(&bootinfo);
-    // acpi::init(bootinfo.physical_memory_offset);
+    device::init();
+    acpi::init();
+    pci::init();
 
-    println!("Allocating something");
-    let boxed_number = Box::new(42);
-    println!("Boxed number: {:?}", boxed_number);
+    for acpi_address in acpi::devices() {
+        let mut device_manager = device::device_manager().upgrade();
+        let device = device_manager.add_device(Some(acpi_address), None, None);
+        device_manager.discover_child_devices(&device);
+    }
+
+    device::print_all_devices();
+
     println!("All done initializing");
-
     halt_loop()
 }
 
