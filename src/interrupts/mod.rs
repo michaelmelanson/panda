@@ -1,9 +1,9 @@
 pub mod breakpoint;
 pub mod double_fault;
-pub mod keyboard;
 pub mod page_fault;
-pub mod timer;
+pub mod irq;
 
+use irq::irq_handler;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
@@ -24,8 +24,10 @@ lazy_static! {
         idt.page_fault
             .set_handler_fn(page_fault::page_fault_handler);
 
-        idt[usize::from(Irq::Timer.interrupt_id())].set_handler_fn(timer::timer_handler);
-        idt[usize::from(Irq::Keyboard.interrupt_id())].set_handler_fn(keyboard::keyboard_handler);
+        for irq in 0..=255-32 {
+            idt[irq + 0x20].set_handler_fn(irq_handler);
+        }
+
         idt
     };
 }

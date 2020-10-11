@@ -1,4 +1,5 @@
 use pic8259_simple::ChainedPics;
+use x86_64::instructions::port::Port;
 
 pub const PIC_1_OFFSET: u8 = 0x20;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -29,8 +30,26 @@ pub fn init() {
     }
 }
 
-pub fn notify_end_of_interrupt(irq: Irq) {
+pub fn notify_end_of_interrupt(interrupt_id: u8) {
     unsafe {
-        PICS.lock().notify_end_of_interrupt(irq.interrupt_id());
+        PICS.lock().notify_end_of_interrupt(interrupt_id);
+    }
+}
+
+pub fn notify_end_of_irq(irq: u8) {
+    notify_end_of_interrupt(0x20 + irq);
+}
+
+pub fn isr() -> u16 {
+    let mut pic1_cmd: Port<u8> = Port::new(0x20);
+    let mut pic2_cmd: Port<u8> = Port::new(0xA0);
+
+    const READ_ISR: u8 = 0x0b;
+    
+    unsafe { 
+        pic1_cmd.write(READ_ISR); 
+        pic2_cmd.write(READ_ISR);
+
+        ((pic2_cmd.read() as u16) << 8) | (pic1_cmd.read() as u16)
     }
 }

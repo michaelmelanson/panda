@@ -14,7 +14,7 @@ pub extern "x86-interrupt" fn page_fault_handler(
     stack_frame: &mut InterruptStackFrame,
     error_code: PageFaultErrorCode,
 ) {
-    PAGE_FAULT_COUNT.fetch_add(1, Ordering::SeqCst);
+    PAGE_FAULT_COUNT.fetch_add(1, Ordering::Relaxed);
 
     use x86_64::registers::control::Cr2;
 

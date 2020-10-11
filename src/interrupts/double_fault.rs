@@ -8,7 +8,7 @@ pub extern "x86-interrupt" fn double_fault_handler(
     stack_frame: &mut InterruptStackFrame,
     error_code: u64,
 ) -> ! {
-    DOUBLE_FAULT_COUNT.fetch_add(1, Ordering::SeqCst);
+    DOUBLE_FAULT_COUNT.fetch_add(1, Ordering::Relaxed);
 
     panic!(
         "EXCEPTION: DOUBLE FAULT (error code {})\n{:#?}",

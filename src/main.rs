@@ -10,14 +10,9 @@ extern crate panda;
 extern crate rlibc;
 
 use panda::*;
+use task::Task;
 
 use core::panic::PanicInfo;
-
-pub fn halt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt()
-    }
-}
 
 #[cfg(test)]
 #[no_mangle]
@@ -44,6 +39,8 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
     device::init();
     acpi::init();
     pci::init();
+    
+    let mut executor = task::init();
 
     for acpi_address in acpi::devices() {
         let mut device_manager = device::device_manager().upgrade();
@@ -51,10 +48,10 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
         device_manager.discover_child_devices(&device);
     }
 
-    device::print_all_devices();
+    device::start_all_devices(&mut executor);
 
     println!("All done initializing");
-    halt_loop()
+    executor.run();
 }
 
 #[test_case]

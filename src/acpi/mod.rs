@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use context_handler::AmlContextHandler;
 use mapping_handler::AcpiMappingHandler;
 use device_iterator::DeviceIterator;
-use spin::{Once, RwLock, RwLockReadGuard};
+use spin::Once;
 
 use aml::{AmlContext, AmlError, AmlName, AmlValue, DebugVerbosity};
 use x86_64::PhysAddr;
@@ -101,7 +101,7 @@ pub fn devices() -> DeviceIterator {
     let dsdt = dsdt_aml();
 
     dsdt.namespace
-        .traverse(|name, level| {
+        .traverse(|name, _level| {
             device_names.push(name.clone());
             Ok(true)
         })

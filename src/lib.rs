@@ -1,11 +1,12 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 #![feature(custom_test_frameworks)]
 #![feature(alloc_error_handler)]
 #![feature(const_in_array_repeat_expressions)]
-#![test_runner(crate::test_runner)]
-#![reexport_test_harness_main = "test_main"]
 #![feature(abi_x86_interrupt)]
+#![feature(wake_trait)]
 
 extern crate alloc;
 extern crate rlibc;
@@ -26,6 +27,7 @@ pub mod memory;
 pub mod panic;
 pub mod pci;
 pub mod pic;
+pub mod task;
 pub mod qemu;
 pub mod vga;
 
