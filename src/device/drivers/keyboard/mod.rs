@@ -13,8 +13,6 @@ use crate::{
 #[derive(Debug)]
 pub struct Scancode(u8);
 
-
-
 pub async fn keyboard_task(device_id: DeviceId) {
   println!("Keyboard task started");
 
