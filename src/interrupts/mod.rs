@@ -7,7 +7,7 @@ use irq::irq_handler;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
-use crate::{gdt, pic::Irq};
+use crate::{gdt};
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {

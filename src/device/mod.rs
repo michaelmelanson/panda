@@ -7,7 +7,6 @@ use hashbrown::HashMap;
 use crate::acpi::AcpiDeviceAddress;
 use crate::task::Executor;
 
-use alloc::vec::Vec;
 use aml::{AmlName, AmlValue};
 use device_children_iterator::DeviceChildrenIterator;
 use drivers::start_device_driver;

@@ -10,7 +10,6 @@ extern crate panda;
 extern crate rlibc;
 
 use panda::*;
-use task::Task;
 
 use core::panic::PanicInfo;
 

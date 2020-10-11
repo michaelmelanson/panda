@@ -1,6 +1,6 @@
 pub mod keyboard;
 
-use keyboard::task::keyboard_task;
+use keyboard::keyboard_task;
 
 use crate::task::{Executor, Task};
 
