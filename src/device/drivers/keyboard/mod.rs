@@ -1,13 +1,12 @@
-
 use alloc::vec::Vec;
-use aml::{AmlName, resource::Resource};
+use aml::{resource::Resource, AmlName};
 use pc_keyboard::DecodedKey;
 use x86_64::instructions::port::Port;
 
 use crate::{
   acpi, 
-  device::{DeviceId, device_manager}, 
-  interrupts::irq::wait_irq
+    device::{device_manager, DeviceId},
+    interrupts::irq::wait_irq,
 };
 
 #[derive(Debug)]

@@ -4,13 +4,13 @@ mod mapping_handler;
 
 use core::fmt::Display;
 
-use ::acpi::{Acpi, PciConfigRegions};
 use crate::acpi;
+use ::acpi::{Acpi, PciConfigRegions};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use context_handler::AmlContextHandler;
-use mapping_handler::AcpiMappingHandler;
 use device_iterator::DeviceIterator;
+use mapping_handler::AcpiMappingHandler;
 use spin::Once;
 
 use aml::{AmlContext, AmlError, AmlName, AmlValue, DebugVerbosity};
@@ -22,9 +22,10 @@ use crate::{memory, pci::PciDeviceAddress};
 pub struct AcpiDeviceAddress(aml::AmlName);
 
 impl AcpiDeviceAddress {
-    pub fn aml_name(&self) -> &aml::AmlName { &self.0 }
+    pub fn aml_name(&self) -> &aml::AmlName {
+        &self.0
+    }
 }
-
 
 impl Display for AcpiDeviceAddress {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -40,26 +41,22 @@ fn rsdp() -> &'static Acpi {
 }
 
 fn dsdt_aml() -> &'static AmlContext {
-    DSDT_AML
-        .call_once(|| {
-            let aml_table = rsdp().dsdt.as_ref().expect("No DSDT");
+    DSDT_AML.call_once(|| {
+        let aml_table = rsdp().dsdt.as_ref().expect("No DSDT");
 
-            println!("Parsing AML...");
-            let mut context =
-                aml::AmlContext::new(Box::new(AmlContextHandler), false, DebugVerbosity::All);
+        println!("Parsing AML...");
+        let mut context =
+            aml::AmlContext::new(Box::new(AmlContextHandler), false, DebugVerbosity::All);
 
-            let aml_table_addr =
-                memory::physical_to_virtual_address(PhysAddr::new(aml_table.address as u64));
-            let aml_slice = unsafe {
-                core::slice::from_raw_parts::<u8>(
-                    aml_table_addr.as_ptr(),
-                    aml_table.length as usize,
-                )
-            };
-            context.parse_table(aml_slice).expect("Could not parse AML");
+        let aml_table_addr =
+            memory::physical_to_virtual_address(PhysAddr::new(aml_table.address as u64));
+        let aml_slice = unsafe {
+            core::slice::from_raw_parts::<u8>(aml_table_addr.as_ptr(), aml_table.length as usize)
+        };
+        context.parse_table(aml_slice).expect("Could not parse AML");
 
-            context
-        })
+        context
+    })
 }
 
 pub fn init() {
@@ -114,14 +111,22 @@ pub fn pci_address_for_acpi_address(acpi_address: &AcpiDeviceAddress) -> Option<
     let aml_name = acpi_address.aml_name();
 
     let segment = acpi::search(aml_name, "_SEG")
-        .map(|segment| acpi::get_as_integer(&segment).expect("failed to get segment number")).unwrap_or(0) as u16;
+        .map(|segment| acpi::get_as_integer(&segment).expect("failed to get segment number"))
+        .unwrap_or(0) as u16;
 
     let bus = acpi::search(aml_name, "_BBN")
-        .map(|bus| acpi::get_as_integer(&bus).expect("failed to get bus number")).unwrap_or(0) as u8;
+        .map(|bus| acpi::get_as_integer(&bus).expect("failed to get bus number"))
+        .unwrap_or(0) as u8;
 
-    let adr = acpi::get_as_integer(&aml_name.child(&AmlName::from_str("_ADR").unwrap())).ok()? as u32;
+    let adr =
+        acpi::get_as_integer(&aml_name.child(&AmlName::from_str("_ADR").unwrap())).ok()? as u32;
     let slot = (adr >> 16) as u8;
     let function = (adr & 0xff) as u8;
 
-    Some(PciDeviceAddress::new(segment, bus, slot, function))
+    Some(PciDeviceAddress::new(
+        segment,
+        bus,
+        slot,
+        function,
+    ))
 }

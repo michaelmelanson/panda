@@ -38,7 +38,7 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
     device::init();
     acpi::init();
     pci::init();
-    
+
     let mut executor = task::init();
 
     for acpi_address in acpi::devices() {

@@ -8,7 +8,7 @@ pub use task::Task;
 pub use task_id::TaskId;
 
 pub fn init() -> Executor {
-  let executor = Executor::new();
+    let executor = Executor::new();
 
-  executor
+    executor
 }

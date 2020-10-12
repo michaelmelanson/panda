@@ -27,8 +27,8 @@ pub mod memory;
 pub mod panic;
 pub mod pci;
 pub mod pic;
-pub mod task;
 pub mod qemu;
+pub mod task;
 pub mod vga;
 
 pub trait Testable {

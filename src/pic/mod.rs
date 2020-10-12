@@ -45,9 +45,9 @@ pub fn isr() -> u16 {
     let mut pic2_cmd: Port<u8> = Port::new(0xA0);
 
     const READ_ISR: u8 = 0x0b;
-    
-    unsafe { 
-        pic1_cmd.write(READ_ISR); 
+
+    unsafe {
+        pic1_cmd.write(READ_ISR);
         pic2_cmd.write(READ_ISR);
 
         ((pic2_cmd.read() as u16) << 8) | (pic1_cmd.read() as u16)

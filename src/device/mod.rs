@@ -22,7 +22,6 @@ lazy_static! {
 
 type DeviceId = usize;
 
-
 #[derive(Debug)]
 enum DeviceKind {
     Unknown,
@@ -59,7 +58,7 @@ enum PciStorageSubclassKind {
     SerialATA,
     SerialAttachedSCSI,
     NVMem,
-    Other
+    Other,
 }
 
 #[derive(Debug)]
@@ -67,7 +66,7 @@ enum PciDisplaySubclassKind {
     VGA, // VGA-Compatible
     XGA,
     ThreeD,
-    Other
+    Other,
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +74,7 @@ pub struct Device {
     id: DeviceId,
     parent_id: Option<DeviceId>,
     acpi_address: Option<AcpiDeviceAddress>,
-    pci_address: Option<PciDeviceAddress>
+    pci_address: Option<PciDeviceAddress>,
 }
 
 impl Device {
@@ -93,17 +92,18 @@ impl Device {
             match (name.as_string().as_str(), hid, cid, sub) {
                 ("\\_SB_.PCI0", _, _, _) => return DeviceKind::PciBus,
                 (_, Some(AmlValue::Integer(0x303D041)), _, _) => return DeviceKind::PcKeyboard,
-                _ => {},
+                _ => {}
             }
         }
 
         if let Some(pci_device_address) = &self.pci_address {
-            let vendor_id: u16 =
-                pci::read(pci_device_address, 0).expect("invalid PCI device");
+            let vendor_id: u16 = pci::read(pci_device_address, 0).expect("invalid PCI device");
             if vendor_id != 0xffff {
                 // let device_id: u16 = pci::read(pci_device_address, 2).expect("invalid PCI device");
-                let class = pci::read::<u8>(pci_device_address, 11).expect("failed to read PCI class");
-                let subclass = pci::read::<u8>(pci_device_address, 10).expect("failed to read PCI subclass");
+                let class =
+                    pci::read::<u8>(pci_device_address, 11).expect("failed to read PCI class");
+                let subclass =
+                    pci::read::<u8>(pci_device_address, 10).expect("failed to read PCI subclass");
 
                 let kind = match (class, subclass) {
                     (0x00, 0x00) => unimplemented!(),
@@ -119,10 +119,10 @@ impl Device {
                             0x07 => PciStorageSubclassKind::SerialAttachedSCSI,
                             0x08 => PciStorageSubclassKind::NVMem,
                             0x80 => PciStorageSubclassKind::Other,
-                            subclass => unimplemented!("Storage subclass {:2X}", subclass)
+                            subclass => unimplemented!("Storage subclass {:2X}", subclass),
                         };
                         PciDeviceKind::Storage(subclass)
-                    },
+                    }
                     (0x02, _) => PciDeviceKind::Network,
                     (0x03, subclass) => {
                         let subclass = match subclass {
@@ -130,11 +130,11 @@ impl Device {
                             0x01 => PciDisplaySubclassKind::XGA,
                             0x02 => PciDisplaySubclassKind::ThreeD,
                             0x80 => PciDisplaySubclassKind::Other,
-                            subclass => unimplemented!("Display subclass {:2X}", subclass)
+                            subclass => unimplemented!("Display subclass {:2X}", subclass),
                         };
 
                         PciDeviceKind::Display(subclass)
-                    },
+                    }
                     (0x04, _) => PciDeviceKind::Multimedia,
                     (0x05, _) => PciDeviceKind::Memory,
                     (0x06, _) => PciDeviceKind::Bridge,
@@ -145,7 +145,7 @@ impl Device {
                     (0x0B, _) => PciDeviceKind::Processor,
                     (0x0C, _) => PciDeviceKind::SerialBusController,
                     (0x0D, _) => PciDeviceKind::Wireless,
-                    (_, _)    => unimplemented!()
+                    (_, _) => unimplemented!(),
                 };
 
                 return DeviceKind::PciDevice(kind);
@@ -259,7 +259,7 @@ impl DeviceManager {
     }
 
     fn find_by_pci_address(&mut self, pci_address: &PciDeviceAddress) -> Option<&mut Device> {
-        for device in self.devices.values_mut () {
+        for device in self.devices.values_mut() {
             if device.pci_address == Some(*pci_address) {
                 return Some(device);
             }
