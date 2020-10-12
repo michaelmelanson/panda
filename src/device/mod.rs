@@ -84,7 +84,7 @@ impl Device {
             let hid = name.child(&AmlName::from_str("_HID").unwrap());
             let cid = name.child(&AmlName::from_str("_CID").unwrap());
             let sub = name.child(&AmlName::from_str("_SUB").unwrap());
-            
+
             let hid = acpi::get(&hid).ok();
             let cid = acpi::get(&cid).ok();
             let sub = acpi::get(&sub).ok();
@@ -164,7 +164,7 @@ impl Device {
 
                 DeviceChildrenIterator::PCI {
                     parent_pci_address,
-                    next_slot: 0
+                    next_slot: 0,
                 }
             }
 
@@ -197,26 +197,35 @@ pub struct DeviceManager {
 }
 
 impl DeviceManager {
-    pub fn add_device(&mut self, acpi_address: Option<AcpiDeviceAddress>, pci_address: Option<PciDeviceAddress>, parent_id: Option<DeviceId>) -> Device {
+    pub fn add_device(
+        &mut self,
+        acpi_address: Option<AcpiDeviceAddress>,
+        pci_address: Option<PciDeviceAddress>,
+        parent_id: Option<DeviceId>,
+    ) -> Device {
         // println!(
         //     "DEVICE: Adding device at ACPI address {:?}, PCI address {:?}, child of {:?}",
         //     acpi_address, pci_address, parent_id
         // );
 
-
         let pci_address = pci_address.or_else(|| {
-            acpi_address.clone().and_then(|ref acpi_address| {
-                acpi::pci_address_for_acpi_address(acpi_address)
-            })
+            acpi_address
+                .clone()
+                .and_then(|ref acpi_address| acpi::pci_address_for_acpi_address(acpi_address))
         });
 
-        let device = if let Some(mut device) = acpi_address.clone().and_then(|ref acpi_address| self.find_by_acpi_address(acpi_address)) {
+        let device = if let Some(mut device) = acpi_address
+            .clone()
+            .and_then(|ref acpi_address| self.find_by_acpi_address(acpi_address))
+        {
             if pci_address.is_some() {
                 device.pci_address = pci_address;
             }
 
             device.clone()
-        } else if let Some(mut device) = pci_address.and_then(|ref pci_address| self.find_by_pci_address(pci_address)) {
+        } else if let Some(mut device) =
+            pci_address.and_then(|ref pci_address| self.find_by_pci_address(pci_address))
+        {
             if acpi_address.is_some() {
                 device.acpi_address = acpi_address;
             }
@@ -229,8 +238,8 @@ impl DeviceManager {
                 acpi_address,
                 pci_address,
             };
-            
-            self.next_device_id += 1;            
+
+            self.next_device_id += 1;
             device
         };
 
@@ -250,7 +259,7 @@ impl DeviceManager {
         for device in self.devices.values_mut() {
             if let Some(ref device_acpi_address) = device.acpi_address {
                 if device_acpi_address == acpi_address {
-                   return Some(device);
+                    return Some(device);
                 }
             }
         }

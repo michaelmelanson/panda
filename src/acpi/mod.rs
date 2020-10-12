@@ -123,10 +123,5 @@ pub fn pci_address_for_acpi_address(acpi_address: &AcpiDeviceAddress) -> Option<
     let slot = (adr >> 16) as u8;
     let function = (adr & 0xff) as u8;
 
-    Some(PciDeviceAddress::new(
-        segment,
-        bus,
-        slot,
-        function,
-    ))
+    Some(PciDeviceAddress::new(segment, bus, slot, function))
 }

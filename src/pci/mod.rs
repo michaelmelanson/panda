@@ -1,7 +1,7 @@
 use core::fmt::UpperHex;
 
-use ::acpi::PciConfigRegions;
 use crate::acpi;
+use ::acpi::PciConfigRegions;
 use spin::Once;
 use x86_64::PhysAddr;
 
@@ -44,8 +44,11 @@ pub fn read<T: UpperHex + Copy>(device: &PciDeviceAddress, offset: u8) -> Option
     let slot = device.slot;
     let function = device.function;
 
-    let phys_addr = PCI_CONFIG_REGIONS.wait()
-        .unwrap().as_ref().unwrap()
+    let phys_addr = PCI_CONFIG_REGIONS
+        .wait()
+        .unwrap()
+        .as_ref()
+        .unwrap()
         .physical_address(segment, bus, slot, function)?;
     let phys_addr = phys_addr + (offset as u64);
     let virt_addr = memory::physical_to_virtual_address(PhysAddr::new(phys_addr));
