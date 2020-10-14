@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 acpi = { path = "../acpi/acpi" }
 aml = { path = "../acpi/aml" }
+bit_field = "0.10.1"
 bootloader = { version = "0.9.8", features=['map_physical_memory'] }
 byteorder = { version = "1.3.4", default-features=false }
 conquer-once = { version = "0.2.1", default-features=false }

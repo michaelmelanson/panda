@@ -2,9 +2,9 @@ mod context_handler;
 mod device_iterator;
 mod mapping_handler;
 
-use core::fmt::Display;
+use core::{fmt::Display, hash::Hash};
 
-use crate::acpi;
+use crate::{acpi, pci};
 use ::acpi::{Acpi, PciConfigRegions};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -21,9 +21,23 @@ use crate::{memory, pci::PciDeviceAddress};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AcpiDeviceAddress(aml::AmlName);
 
+impl Hash for AcpiDeviceAddress {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.as_string().hash(state)
+    }
+}
+
 impl AcpiDeviceAddress {
     pub fn aml_name(&self) -> &aml::AmlName {
         &self.0
+    }
+
+    pub fn pci_address(&self) -> Option<PciDeviceAddress> {
+        pci_address_for_acpi_address(self)
+    }
+
+    pub fn parent(&self) -> Option<AcpiDeviceAddress> {
+        self.aml_name().parent().ok().map(|aml_name| AcpiDeviceAddress(aml_name))
     }
 }
 
@@ -110,6 +124,8 @@ pub fn devices() -> DeviceIterator {
 pub fn pci_address_for_acpi_address(acpi_address: &AcpiDeviceAddress) -> Option<PciDeviceAddress> {
     let aml_name = acpi_address.aml_name();
 
+    println!("Finding PCI address for ACPI device {}", aml_name.as_string());
+
     let segment = acpi::search(aml_name, "_SEG")
         .map(|segment| acpi::get_as_integer(&segment).expect("failed to get segment number"))
         .unwrap_or(0) as u16;
@@ -123,5 +139,17 @@ pub fn pci_address_for_acpi_address(acpi_address: &AcpiDeviceAddress) -> Option<
     let slot = (adr >> 16) as u8;
     let function = (adr & 0xff) as u8;
 
-    Some(PciDeviceAddress::new(segment, bus, slot, function))
+    let base_address = pci::base_address_for_segment(segment)
+        .expect("Could not find PCI base address");
+
+    let pci_address = PciDeviceAddress::new(
+        base_address,
+        segment,
+        bus,
+        slot,
+        function,
+    );
+
+    println!(" -> PCI address is {}", pci_address);
+    Some(pci_address)
 }

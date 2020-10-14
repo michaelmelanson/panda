@@ -17,7 +17,7 @@ pub async fn keyboard_task(device_id: DeviceId) {
 
     let device_manager = device_manager();
     let device = device_manager
-        .get(device_id)
+        .get(&device_id)
         .expect("could not find keyboard device");
     let acpi_address = device
         .acpi_address

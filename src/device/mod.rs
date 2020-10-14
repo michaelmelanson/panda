@@ -1,8 +1,9 @@
 mod device_children_iterator;
 pub mod drivers;
 
-use core::fmt::Display;
-use hashbrown::HashMap;
+use alloc::vec::Vec;
+use core::{fmt::Display, sync::atomic::AtomicUsize, sync::atomic::Ordering};
+use hashbrown::{HashMap, HashSet};
 
 use crate::acpi::AcpiDeviceAddress;
 use crate::task::Executor;
@@ -11,7 +12,7 @@ use aml::{AmlName, AmlValue};
 use device_children_iterator::DeviceChildrenIterator;
 use drivers::start_device_driver;
 use lazy_static::lazy_static;
-use pci::PciDeviceAddress;
+use pci::{DeviceKind, PciDeviceAddress, PciDeviceKind};
 use spin::{Once, RwLock, RwLockUpgradeableGuard};
 
 use crate::{acpi, pci};
@@ -20,53 +21,21 @@ lazy_static! {
     static ref PCI_ROOT: AmlName = AmlName::from_str("\\_SB_.PCI0").unwrap();
 }
 
-type DeviceId = usize;
+#[derive(Copy, Clone, PartialOrd, PartialEq, Ord, Eq, Hash, Debug)]
+pub struct DeviceId(usize);
 
-#[derive(Debug)]
-enum DeviceKind {
-    Unknown,
-    PciBus,
-    PciDevice(PciDeviceKind),
-    PcKeyboard,
+impl DeviceId {
+    pub fn new() -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        DeviceId(id)
+    }
 }
 
-#[derive(Debug)]
-enum PciDeviceKind {
-    Storage(PciStorageSubclassKind),
-    Network,
-    Display(PciDisplaySubclassKind),
-    Multimedia,
-    Memory,
-    Bridge,
-    SimpleComms,
-    BasePeripheral,
-    Input,
-    Dock,
-    Processor,
-    SerialBusController,
-    Wireless,
-}
-
-#[derive(Debug)]
-enum PciStorageSubclassKind {
-    SCSI,
-    IDE,
-    Floppy,
-    IPI,
-    RAID,
-    ATA,
-    SerialATA,
-    SerialAttachedSCSI,
-    NVMem,
-    Other,
-}
-
-#[derive(Debug)]
-enum PciDisplaySubclassKind {
-    VGA, // VGA-Compatible
-    XGA,
-    ThreeD,
-    Other,
+impl Display for DeviceId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Device #{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -97,61 +66,7 @@ impl Device {
         }
 
         if let Some(pci_device_address) = &self.pci_address {
-            let vendor_id: u16 = pci::read(pci_device_address, 0).expect("invalid PCI device");
-            if vendor_id != 0xffff {
-                // let device_id: u16 = pci::read(pci_device_address, 2).expect("invalid PCI device");
-                let class =
-                    pci::read::<u8>(pci_device_address, 11).expect("failed to read PCI class");
-                let subclass =
-                    pci::read::<u8>(pci_device_address, 10).expect("failed to read PCI subclass");
-
-                let kind = match (class, subclass) {
-                    (0x00, 0x00) => unimplemented!(),
-                    (0x01, subclass) => {
-                        let subclass = match subclass {
-                            0x00 => PciStorageSubclassKind::SCSI,
-                            0x01 => PciStorageSubclassKind::IDE,
-                            0x02 => PciStorageSubclassKind::Floppy,
-                            0x03 => PciStorageSubclassKind::IPI,
-                            0x04 => PciStorageSubclassKind::RAID,
-                            0x05 => PciStorageSubclassKind::ATA,
-                            0x06 => PciStorageSubclassKind::SerialATA,
-                            0x07 => PciStorageSubclassKind::SerialAttachedSCSI,
-                            0x08 => PciStorageSubclassKind::NVMem,
-                            0x80 => PciStorageSubclassKind::Other,
-                            subclass => unimplemented!("Storage subclass {:2X}", subclass),
-                        };
-                        PciDeviceKind::Storage(subclass)
-                    }
-                    (0x02, _) => PciDeviceKind::Network,
-                    (0x03, subclass) => {
-                        let subclass = match subclass {
-                            0x00 => PciDisplaySubclassKind::VGA,
-                            0x01 => PciDisplaySubclassKind::XGA,
-                            0x02 => PciDisplaySubclassKind::ThreeD,
-                            0x80 => PciDisplaySubclassKind::Other,
-                            subclass => unimplemented!("Display subclass {:2X}", subclass),
-                        };
-
-                        PciDeviceKind::Display(subclass)
-                    }
-                    (0x04, _) => PciDeviceKind::Multimedia,
-                    (0x05, _) => PciDeviceKind::Memory,
-                    (0x06, _) => PciDeviceKind::Bridge,
-                    (0x07, _) => PciDeviceKind::SimpleComms,
-                    (0x08, _) => PciDeviceKind::BasePeripheral,
-                    (0x09, _) => PciDeviceKind::Input,
-                    (0x0A, _) => PciDeviceKind::Dock,
-                    (0x0B, _) => PciDeviceKind::Processor,
-                    (0x0C, _) => PciDeviceKind::SerialBusController,
-                    (0x0D, _) => PciDeviceKind::Wireless,
-                    (_, _) => unimplemented!(),
-                };
-
-                return DeviceKind::PciDevice(kind);
-            } else {
-                println!("Invalid PCI device -- no vendor found");
-            }
+            return DeviceKind::PciDevice(pci_device_address.kind());
         }
 
         DeviceKind::Unknown
@@ -164,7 +79,7 @@ impl Device {
 
                 DeviceChildrenIterator::PCI {
                     parent_pci_address,
-                    next_slot: 0,
+                    next_slot: 1,
                 }
             }
 
@@ -175,7 +90,7 @@ impl Device {
 
 impl Display for Device {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Device #{}", self.id)?;
+        write!(f, "{}", self.id)?;
         if let Some(parent_id) = self.parent_id {
             write!(f, ", child of {}", parent_id)?;
         }
@@ -192,95 +107,121 @@ impl Display for Device {
 
 #[derive(Default)]
 pub struct DeviceManager {
-    next_device_id: DeviceId,
-    devices: HashMap<DeviceId, Device>,
+    devices: HashSet<DeviceId>,
+    parent_id: HashMap<DeviceId, DeviceId>,
+    pci_addresses: HashMap<DeviceId, PciDeviceAddress>,
+    id_by_pci_address: HashMap<PciDeviceAddress, DeviceId>,
+    acpi_addresses: HashMap<DeviceId, AcpiDeviceAddress>,
+    id_by_acpi_address: HashMap<AcpiDeviceAddress, DeviceId>,
 }
 
 impl DeviceManager {
-    pub fn add_device(
+    pub fn add_pci_device(
         &mut self,
-        acpi_address: Option<AcpiDeviceAddress>,
-        pci_address: Option<PciDeviceAddress>,
+        pci_address: PciDeviceAddress,
         parent_id: Option<DeviceId>,
-    ) -> Device {
-        // println!(
-        //     "DEVICE: Adding device at ACPI address {:?}, PCI address {:?}, child of {:?}",
-        //     acpi_address, pci_address, parent_id
-        // );
+    ) -> DeviceId {
+        if let Some(device_id) = self.id_by_pci_address.get(&pci_address) {
+            return *device_id;
+        }
 
-        let pci_address = pci_address.or_else(|| {
-            acpi_address
-                .clone()
-                .and_then(|ref acpi_address| acpi::pci_address_for_acpi_address(acpi_address))
-        });
-
-        let device = if let Some(mut device) = acpi_address
-            .clone()
-            .and_then(|ref acpi_address| self.find_by_acpi_address(acpi_address))
-        {
-            if pci_address.is_some() {
-                device.pci_address = pci_address;
-            }
-
-            device.clone()
-        } else if let Some(mut device) =
-            pci_address.and_then(|ref pci_address| self.find_by_pci_address(pci_address))
-        {
-            if acpi_address.is_some() {
-                device.acpi_address = acpi_address;
-            }
-
-            device.clone()
-        } else {
-            let device = Device {
-                id: self.next_device_id,
-                parent_id,
-                acpi_address,
-                pci_address,
-            };
-
-            self.next_device_id += 1;
-            device
-        };
-
-        self.insert_or_update_device(&device);
-        device
+        let device_id = DeviceId::new();
+        self.devices.insert(device_id);
+        self.id_by_pci_address.insert(pci_address, device_id);
+        self.pci_addresses.insert(device_id, pci_address);
+        device_id
     }
 
-    fn get(&self, id: DeviceId) -> Option<&Device> {
-        self.devices.get(&id)
+    pub fn add_acpi_device(
+        &mut self,
+        acpi_address: AcpiDeviceAddress,
+        parent_id: Option<DeviceId>,
+    ) -> DeviceId {
+        let device_id = if let Some(pci_address) = acpi_address.pci_address() {
+            if let Some(device_id) = self.id_by_pci_address.get(&pci_address) {
+                return *device_id;
+            }
+
+            let device_id = DeviceId::new();
+            self.pci_addresses.insert(device_id, pci_address);
+            self.id_by_pci_address.insert(pci_address, device_id);
+
+            device_id
+        } else {
+            DeviceId::new()
+        };
+
+        self.devices.insert(device_id);
+
+        if let Some(parent_acpi_address) = acpi_address.parent() {
+            if let Some(parent_device_id) = self.id_by_acpi_address.get(&parent_acpi_address) {
+                self.parent_id.insert(device_id, *parent_device_id);
+            } else {
+                self.parent_id.remove(&device_id);
+            }
+        }
+
+        self.acpi_addresses.insert(device_id, acpi_address.clone());
+        self.id_by_acpi_address.insert(acpi_address.clone(), device_id);
+
+        if let Some(parent_id) = parent_id {
+            self.parent_id.insert(device_id, parent_id);
+        }
+
+        device_id
+    }
+
+    fn get(&self, id: &DeviceId) -> Option<Device> {
+        if !self.devices.contains(&id) {
+            return None;
+        }
+
+        let parent_id = self.parent_id.get(&id).map(|x| *x);
+        let pci_address = self.pci_addresses.get(&id).map(|x| *x);
+        let acpi_address = self.acpi_addresses.get(&id).map(|x| x.clone());
+
+        Some(Device {
+            id: *id,
+            parent_id,
+            acpi_address,
+            pci_address,
+        })
     }
 
     fn insert_or_update_device(&mut self, new_device: &Device) {
-        self.devices.insert(new_device.id, new_device.clone());
+        self.devices.insert(new_device.id);
+
+        new_device
+            .parent_id
+            .map(|parent_id| self.parent_id.insert(new_device.id, parent_id))
+            .unwrap_or_else(|| self.parent_id.remove(&new_device.id));
+
+        new_device
+            .acpi_address
+            .clone()
+            .map(|acpi_address| self.acpi_addresses.insert(new_device.id, acpi_address))
+            .unwrap_or_else(|| self.acpi_addresses.remove(&new_device.id));
+
+        new_device
+            .pci_address
+            .map(|pci_address| self.pci_addresses.insert(new_device.id, pci_address))
+            .unwrap_or_else(|| self.pci_addresses.remove(&new_device.id));
     }
 
-    fn find_by_acpi_address(&mut self, acpi_address: &AcpiDeviceAddress) -> Option<&mut Device> {
-        for device in self.devices.values_mut() {
-            if let Some(ref device_acpi_address) = device.acpi_address {
-                if device_acpi_address == acpi_address {
-                    return Some(device);
-                }
-            }
+    fn find_by_acpi_address(&mut self, acpi_address: &AcpiDeviceAddress) -> Option<Device> {
+        if let Some(device_id) = self.id_by_acpi_address.get(acpi_address) {
+            return self.get(device_id);
         }
 
         None
     }
 
-    fn find_by_pci_address(&mut self, pci_address: &PciDeviceAddress) -> Option<&mut Device> {
-        for device in self.devices.values_mut() {
-            if device.pci_address == Some(*pci_address) {
-                return Some(device);
-            }
+    fn find_by_pci_address(&mut self, pci_address: &PciDeviceAddress) -> Option<Device> {
+        if let Some(device_id) = self.id_by_pci_address.get(pci_address) {
+            return self.get(device_id);
         }
 
         None
-    }
-
-    pub fn discover_child_devices(&mut self, parent: &Device) {
-        for (acpi_address, pci_address) in parent.children() {
-            self.add_device(acpi_address, pci_address, Some(parent.id));
-        }
     }
 }
 
@@ -303,7 +244,8 @@ pub fn start_all_devices(executor: &mut Executor) {
 
     let device_manager = device_manager();
 
-    for device in device_manager.devices.values() {
+    for device_id in device_manager.devices.iter() {
+        let device = device_manager.get(device_id).unwrap();
         println!("  - {} ({:?})", device, device.kind());
         start_device_driver(executor, &device);
     }

@@ -188,6 +188,7 @@ version = "0.1.0"
 dependencies = [
  "acpi",
  "aml",
+ "bit_field 0.10.1",
  "bootloader",
  "byteorder",
  "conquer-once",

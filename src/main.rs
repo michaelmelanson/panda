@@ -41,10 +41,10 @@ pub extern "C" fn _start(bootinfo: &'static bootloader::BootInfo) -> ! {
 
     let mut executor = task::init();
 
+    pci::discover();
     for acpi_address in acpi::devices() {
         let mut device_manager = device::device_manager().upgrade();
-        let device = device_manager.add_device(Some(acpi_address), None, None);
-        device_manager.discover_child_devices(&device);
+        device_manager.add_acpi_device(acpi_address, None);
     }
 
     device::start_all_devices(&mut executor);

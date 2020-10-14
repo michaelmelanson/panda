@@ -28,6 +28,7 @@ impl Iterator for DeviceChildrenIterator {
 
                 loop {
                     let address = PciDeviceAddress::new(
+                        parent_pci_address.base_address,
                         parent_pci_address.segment,
                         parent_pci_address.bus,
                         *next_slot as u8,
@@ -35,10 +36,9 @@ impl Iterator for DeviceChildrenIterator {
                     );
                     *next_slot += 1;
 
-                    if let Some(vender_id) = pci::read::<u16>(&address, 0) {
-                        if vender_id != 0xffff {
-                            return Some((None, Some(address)));
-                        }
+                    if address.is_valid_device() {
+                        println!("Discovered PCI device {}", address);
+                        return Some((None, Some(address)));
                     }
                 }
             }
